@@ -1,0 +1,38 @@
+# 環境變數（絕對不能上 git）
+.env
+.env.*
+!.env.example
+
+# 私鑰 / 憑證
+*.key
+*.pem
+*.p12
+id_rsa
+id_ed25519
+
+# 資料庫
+*.sqlite
+*.db
+
+# 個人筆記（含帳密）
+01-dev/
+
+# Build 產物
+node_modules/
+dist/
+build/
+.next/
+out/
+
+# macOS 垃圾
+.DS_Store
+._*
+.AppleDouble
+
+# 編輯器
+.vscode/settings.json
+.idea/
+
+# bun
+bun.lockb
+*.lock
