@@ -34,6 +34,53 @@ export async function generateReport(formData: FormData): Promise<GeneratedRepor
   return data.report!
 }
 
+// ── Generate report (SSE streaming) ─────────────────────────────────────────
+
+export async function generateReportStream(
+  formData: FormData,
+  onStatus: (msg: string) => void,
+  onChunk: (chars: number) => void,
+): Promise<GeneratedReport> {
+  const res = await fetch(`${BASE}/api/generate/stream`, { method: 'POST', body: formData })
+  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let currentEvent = ''
+  let totalChars = 0
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        currentEvent = line.slice(7).trim()
+      } else if (line.startsWith('data: ')) {
+        try {
+          const data = JSON.parse(line.slice(6)) as Record<string, unknown>
+          if (currentEvent === 'status') onStatus(data.msg as string)
+          else if (currentEvent === 'chunk') {
+            totalChars += (data.text as string).length
+            onChunk(totalChars)
+          } else if (currentEvent === 'done') return data.report as GeneratedReport
+          else if (currentEvent === 'error') throw new Error(data.msg as string)
+        } catch (e) {
+          if (e instanceof SyntaxError) continue
+          throw e
+        }
+        currentEvent = ''
+      }
+    }
+  }
+  throw new Error('串流意外結束')
+}
+
 // ── Export to docx ───────────────────────────────────────────────────────────
 
 export interface ExportInput {

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 import type { GeneratedReport, ContentBlock } from '../api/client'
 
 const HISTORY_KEY = 'ra_history'
@@ -22,22 +24,36 @@ function deleteHistory(id: string) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(entries))
 }
 
-function BlockPreview({ block }: { block: ContentBlock }) {
+function FormulaRender({ latex }: { latex: string }) {
+  try {
+    const html = katex.renderToString(latex, { throwOnError: false, displayMode: true })
+    return <span dangerouslySetInnerHTML={{ __html: html }} />
+  } catch {
+    return <span className="formula-latex">{latex}</span>
+  }
+}
+
+function BlockPreview({ block, workImageUrls }: { block: ContentBlock; workImageUrls: string[][] }) {
   if (block.type === 'paragraph') {
     return <p className="preview-text">{block.text}</p>
   }
   if (block.type === 'formula') {
     return (
       <div className="preview-formula">
-        <span className="formula-latex">{block.latex}</span>
+        <div className="formula-render"><FormulaRender latex={block.latex} /></div>
         <span className="formula-num">({block.number})</span>
       </div>
     )
   }
   if (block.type === 'image') {
+    const url = workImageUrls[block.workIndex]?.[block.imageIndex]
     return (
       <div className="preview-image-block">
-        <div className="preview-image-placeholder">📷 {block.caption}</div>
+        {url
+          ? <img src={url} alt={block.caption} className="preview-image" />
+          : <div className="preview-image-placeholder">📷</div>
+        }
+        <p className="preview-image-caption">{block.caption}</p>
       </div>
     )
   }
@@ -61,12 +77,12 @@ function BlockPreview({ block }: { block: ContentBlock }) {
   return null
 }
 
-function Section({ title, blocks }: { title: string; blocks: ContentBlock[] }) {
+function Section({ title, blocks, workImageUrls }: { title: string; blocks: ContentBlock[]; workImageUrls: string[][] }) {
   return (
     <div className="result-section">
       <h3>{title}</h3>
       <div className="preview-content">
-        {blocks.map((b, i) => <BlockPreview key={i} block={b} />)}
+        {blocks.map((b, i) => <BlockPreview key={i} block={b} workImageUrls={workImageUrls} />)}
       </div>
     </div>
   )
@@ -74,12 +90,13 @@ function Section({ title, blocks }: { title: string; blocks: ContentBlock[] }) {
 
 interface Props {
   report: GeneratedReport
+  workImageUrls: string[][]
   onExport: () => void
   onBack: () => void
   loading: boolean
 }
 
-export default function ResultStep({ report, onExport, onBack, loading }: Props) {
+export default function ResultStep({ report, workImageUrls, onExport, onBack, loading }: Props) {
   const [showHistory, setShowHistory] = useState(false)
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory)
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null)
@@ -91,6 +108,8 @@ export default function ResultStep({ report, onExport, onBack, loading }: Props)
   }
 
   const displayReport = previewEntry?.report ?? report
+  // History entries don't have image URLs — show placeholders
+  const displayUrls = previewEntry ? [] : workImageUrls
 
   return (
     <div className="step-content">
@@ -137,12 +156,12 @@ export default function ResultStep({ report, onExport, onBack, loading }: Props)
       ) : (
         <>
           {!previewEntry && (
-            <p className="hint">公式以 Word 方程式格式輸出，Multisim 截圖將嵌入對應位置</p>
+            <p className="hint">圖片為預覽用；公式以 Word 方程式格式輸出</p>
           )}
 
-          <Section title="數據分析" blocks={displayReport.dataAnalysis} />
-          <Section title="實驗誤差" blocks={displayReport.experimentalErrors} />
-          <Section title="問題討論" blocks={displayReport.problemDiscussion} />
+          <Section title="數據分析" blocks={displayReport.dataAnalysis} workImageUrls={displayUrls} />
+          <Section title="實驗誤差" blocks={displayReport.experimentalErrors} workImageUrls={displayUrls} />
+          <Section title="問題討論" blocks={displayReport.problemDiscussion} workImageUrls={displayUrls} />
 
           <div className="actions">
             {previewEntry ? (

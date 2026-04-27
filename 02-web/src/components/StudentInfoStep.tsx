@@ -46,7 +46,6 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
   return (
     <div className="step-content">
       <h2>學生資訊</h2>
-      <p className="hint">靜態欄位空白時按 Tab 可自動填入預設值</p>
 
       <div className="field-row">
         <div className="field">
@@ -70,33 +69,33 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
       <div className="field-row">
         <div className="field">
           <label>姓名 1</label>
-          <AutoInput value={form.studentInfo.name1} onValue={(v) => set('name1', v)} preset="華柏翰" />
+          <AutoInput value={form.studentInfo.name1} onValue={(v) => set('name1', v)} placeholder="王小明" />
         </div>
         <div className="field">
           <label>學號 1</label>
-          <AutoInput value={form.studentInfo.studentId1} onValue={(v) => set('studentId1', v)} preset="D1363482" />
+          <AutoInput value={form.studentInfo.studentId1} onValue={(v) => set('studentId1', v)} placeholder="D0000001" />
         </div>
       </div>
 
       <div className="field-row">
         <div className="field">
           <label>姓名 2</label>
-          <AutoInput value={form.studentInfo.name2} onValue={(v) => set('name2', v)} preset="陳溏杉" placeholder="陳溏杉（選填）" />
+          <AutoInput value={form.studentInfo.name2} onValue={(v) => set('name2', v)} placeholder="（選填）" />
         </div>
         <div className="field">
           <label>學號 2</label>
-          <AutoInput value={form.studentInfo.studentId2} onValue={(v) => set('studentId2', v)} preset="D1363018" placeholder="D1363018（選填）" />
+          <AutoInput value={form.studentInfo.studentId2} onValue={(v) => set('studentId2', v)} placeholder="（選填）" />
         </div>
       </div>
 
       <div className="field-row">
         <div className="field">
           <label>系別</label>
-          <AutoInput value={form.studentInfo.department} onValue={(v) => set('department', v)} preset="光電二乙" />
+          <AutoInput value={form.studentInfo.department} onValue={(v) => set('department', v)} placeholder="例：光電二乙" />
         </div>
         <div className="field">
           <label>組別</label>
-          <AutoInput value={form.studentInfo.group} onValue={(v) => set('group', v)} preset="D3" />
+          <AutoInput value={form.studentInfo.group} onValue={(v) => set('group', v)} placeholder="例：D3" />
         </div>
       </div>
 
@@ -113,7 +112,7 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
 
       <div className="field">
         <label>指導老師</label>
-        <AutoInput value={form.studentInfo.instructor} onValue={(v) => set('instructor', v)} preset="林昱志 教授" />
+        <AutoInput value={form.studentInfo.instructor} onValue={(v) => set('instructor', v)} placeholder="例：林昱志 教授" />
       </div>
 
       <div className="actions">

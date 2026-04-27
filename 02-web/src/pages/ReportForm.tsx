@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { generateReport, exportDocx } from '../api/client'
+import { generateReportStream, exportDocx } from '../api/client'
 import { compressImage } from '../utils/compressImage'
 import type { GeneratedReport, StudentInfo } from '../api/client'
 import type { HistoryEntry } from '../components/ResultStep'
@@ -52,13 +52,8 @@ const INITIAL: FormState = {
     { label: '工作一', figures: [{ image: null }] },
     { label: '工作二', figures: [{ image: null }, { image: null }, { image: null }] },
   ],
-  workValues: {
-    'w0_f0_vout': '158mV', 'w0_f0_vin': '229mV', 'w0_f0_atheory': '-0.56',
-    'w1_f0_vout': '263mV', 'w1_f0_vin': '225mV', 'w1_f0_atheory': '-1.09',
-    'w1_f1_vout': '257mV', 'w1_f1_vin': '251mV', 'w1_f1_atheory': '1.13',
-    'w1_f2_vout': '760mV', 'w1_f2_vin': '240mV', 'w1_f2_atheory': '3.55',
-  },
-  questionList: '問題一、請問對於減法電路而言不同的交流訊號是否可以相減?\n問題二、請問一直流電壓與正弦波訊號相減，若以示波器ＡＣ檔位觀察其輸出波型，則直流電壓的改變對於輸出波型的觀測有何影響？',
+  workValues: {},
+  questionList: '',
   discussionAnswers: '',
 }
 
@@ -141,7 +136,9 @@ export default function ReportForm() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
+  const [streamChars, setStreamChars] = useState(0)
   const [error, setError] = useState('')
+  const [workImageUrls, setWorkImageUrls] = useState<string[][]>([])
 
   const currentIndex = STEPS.indexOf(step)
 
@@ -173,9 +170,22 @@ export default function ReportForm() {
     setStep('content')
   }
 
+  function handleReset() {
+    if (!confirm('確定要清空所有資料重新開始嗎？')) return
+    workImageUrls.flat().forEach(u => URL.revokeObjectURL(u))
+    setWorkImageUrls([])
+    localStorage.removeItem(FORM_KEY)
+    setForm(INITIAL)
+    setReport(null)
+    setAnalysis(null)
+    setError('')
+    setStep('info')
+  }
+
   async function handleGenerate() {
     setLoading(true)
     setLoadingMsg('壓縮圖片中...')
+    setStreamChars(0)
     setError('')
     try {
       const compressedLabImages = await Promise.all(form.labRecordImages.map(f => compressImage(f)))
@@ -190,7 +200,16 @@ export default function ReportForm() {
         }))
       )
 
-      setLoadingMsg('AI 生成中，約需 30~90 秒...')
+      // Build object URLs for result preview
+      const newUrls = compressedWorks.map(work =>
+        work.figures
+          .filter(f => f.image !== null)
+          .map(f => URL.createObjectURL(f.image!))
+      )
+      workImageUrls.flat().forEach(u => URL.revokeObjectURL(u))
+      setWorkImageUrls(newUrls)
+
+      setLoadingMsg('AI 生成中...')
       const fd = new FormData()
       fd.append('experimentNumber', form.experimentNumber)
       fd.append('experimentTitle', form.experimentTitle)
@@ -215,7 +234,11 @@ export default function ReportForm() {
       fd.append('questionList', form.questionList)
       fd.append('discussionAnswers', form.discussionAnswers)
 
-      const result = await generateReport(fd)
+      const result = await generateReportStream(
+        fd,
+        (msg) => setLoadingMsg(msg),
+        (chars) => { setStreamChars(chars); setLoadingMsg(`AI 生成中... ${chars} 字元`) },
+      )
       setReport(result)
       saveToHistory(result, form.experimentTitle, form.experimentNumber)
       setStep('result')
@@ -262,7 +285,10 @@ export default function ReportForm() {
       {loadingMsg && (
         <div className="loading-overlay">
           <span className="loading-spinner" />
-          <span>{loadingMsg}</span>
+          <div className="loading-text">
+            <span>{loadingMsg}</span>
+            {streamChars > 0 && <span className="stream-hint">（公式與圖片下載後渲染）</span>}
+          </div>
         </div>
       )}
 
@@ -273,6 +299,7 @@ export default function ReportForm() {
             <span className="step-label">{STEP_LABELS[s]}</span>
           </div>
         ))}
+        <button className="btn-reset" onClick={handleReset} title="清空所有資料重新開始">↺ 重新開始</button>
       </div>
 
       {error && <div className="error">{error}</div>}
@@ -301,6 +328,7 @@ export default function ReportForm() {
       {step === 'result' && report && (
         <ResultStep
           report={report}
+          workImageUrls={workImageUrls}
           onExport={handleExport}
           onBack={() => setStep('content')}
           loading={loading}
