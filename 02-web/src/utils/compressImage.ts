@@ -4,7 +4,7 @@
  * quality: JPEG quality 0–1 (default 0.75)
  */
 export async function compressImage(file: File, maxPx = 1024, quality = 0.75): Promise<File> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
     img.onload = () => {
