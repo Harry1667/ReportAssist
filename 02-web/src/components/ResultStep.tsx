@@ -92,11 +92,13 @@ interface Props {
   report: GeneratedReport
   workImageUrls: string[][]
   onExport: () => void
+  exportError: string
+  onRegenerate: () => void
   onBack: () => void
   loading: boolean
 }
 
-export default function ResultStep({ report, workImageUrls, onExport, onBack, loading }: Props) {
+export default function ResultStep({ report, workImageUrls, onExport, exportError, onRegenerate, onBack, loading }: Props) {
   const [showHistory, setShowHistory] = useState(false)
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory)
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null)
@@ -167,12 +169,22 @@ export default function ResultStep({ report, workImageUrls, onExport, onBack, lo
             {previewEntry ? (
               <button className="btn-secondary" onClick={() => setPreviewEntry(null)}>← 返回目前結果</button>
             ) : (
-              <button className="btn-secondary" onClick={onBack}>重新編輯</button>
+              <>
+                <button className="btn-secondary" onClick={onBack} disabled={loading}>重新編輯</button>
+                <button className="btn-secondary" onClick={onRegenerate} disabled={loading}>
+                  {loading ? '生成中...' : '↻ 重新生成'}
+                </button>
+              </>
             )}
             {!previewEntry && (
-              <button className="btn-primary" onClick={onExport} disabled={loading}>
-                {loading ? '處理中...' : '下載 Word'}
-              </button>
+              <div className="export-group">
+                {exportError && (
+                  <span className="export-error">{exportError}</span>
+                )}
+                <button className="btn-primary" onClick={onExport} disabled={loading}>
+                  {loading ? '處理中...' : '下載 Word'}
+                </button>
+              </div>
             )}
           </div>
         </>

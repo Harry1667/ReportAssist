@@ -6,7 +6,14 @@ interface Props {
   onNext: () => void
 }
 
-// 按 Tab 填入預設值（只有欄位為空時才作用）
+// 接受民國或西元日期：115/04/02、115/4/2、2026/04/02、2026-04-02
+const DATE_RE = /^\d{2,4}[\/\-]\d{1,2}[\/\-]\d{1,2}$/
+
+function validateDate(v: string): string {
+  if (!v) return ''
+  return DATE_RE.test(v.trim()) ? '' : '格式應為 115/04/02 或 2026/04/02'
+}
+
 function AutoInput({
   value, onValue, preset, placeholder, ...rest
 }: {
@@ -37,11 +44,15 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
   const set = (key: keyof FormState['studentInfo'], value: string) =>
     onChange({ ...form, studentInfo: { ...form.studentInfo, [key]: value } })
 
+  const expDateErr  = validateDate(form.studentInfo.experimentDate)
+  const subDateErr  = validateDate(form.studentInfo.submitDate)
+
   const canNext =
     form.experimentTitle &&
     form.studentInfo.name1 &&
     form.studentInfo.studentId1 &&
-    form.studentInfo.department
+    form.studentInfo.department &&
+    !expDateErr && !subDateErr
 
   return (
     <div className="step-content">
@@ -57,7 +68,7 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
           />
         </div>
         <div className="field">
-          <label>實驗題目</label>
+          <label>實驗題目 *</label>
           <input
             value={form.experimentTitle}
             onChange={(e) => onChange({ ...form, experimentTitle: e.target.value })}
@@ -68,11 +79,11 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
 
       <div className="field-row">
         <div className="field">
-          <label>姓名 1</label>
+          <label>姓名 1 *</label>
           <AutoInput value={form.studentInfo.name1} onValue={(v) => set('name1', v)} placeholder="王小明" />
         </div>
         <div className="field">
-          <label>學號 1</label>
+          <label>學號 1 *</label>
           <AutoInput value={form.studentInfo.studentId1} onValue={(v) => set('studentId1', v)} placeholder="D0000001" />
         </div>
       </div>
@@ -90,7 +101,7 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
 
       <div className="field-row">
         <div className="field">
-          <label>系別</label>
+          <label>系別 *</label>
           <AutoInput value={form.studentInfo.department} onValue={(v) => set('department', v)} placeholder="例：光電二乙" />
         </div>
         <div className="field">
@@ -102,11 +113,23 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
       <div className="field-row">
         <div className="field">
           <label>實驗日期</label>
-          <input value={form.studentInfo.experimentDate} onChange={(e) => set('experimentDate', e.target.value)} placeholder="115/04/02" />
+          <input
+            value={form.studentInfo.experimentDate}
+            onChange={(e) => set('experimentDate', e.target.value)}
+            placeholder="115/04/02"
+            className={expDateErr ? 'input-error' : ''}
+          />
+          {expDateErr && <span className="field-error">{expDateErr}</span>}
         </div>
         <div className="field">
           <label>繳交日期</label>
-          <input value={form.studentInfo.submitDate} onChange={(e) => set('submitDate', e.target.value)} placeholder="115/04/08" />
+          <input
+            value={form.studentInfo.submitDate}
+            onChange={(e) => set('submitDate', e.target.value)}
+            placeholder="115/04/08"
+            className={subDateErr ? 'input-error' : ''}
+          />
+          {subDateErr && <span className="field-error">{subDateErr}</span>}
         </div>
       </div>
 

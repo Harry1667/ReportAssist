@@ -746,3 +746,31 @@ textarea {
   font-size: 11px;
   color: #9ca3af;
 }
+
+/* Date validation */
+input.input-error {
+  border-color: #f87171;
+  background: #fff5f5;
+}
+input.input-error:focus {
+  outline-color: #ef4444;
+}
+
+.field-error {
+  display: block;
+  font-size: 11px;
+  color: #ef4444;
+  margin-top: 3px;
+}
+
+/* Export inline error */
+.export-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.export-error {
+  font-size: 12px;
+  color: #ef4444;
+}

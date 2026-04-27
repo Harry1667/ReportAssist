@@ -138,6 +138,7 @@ export default function ReportForm() {
   const [loadingMsg, setLoadingMsg] = useState('')
   const [streamChars, setStreamChars] = useState(0)
   const [error, setError] = useState('')
+  const [exportError, setExportError] = useState('')
   const [workImageUrls, setWorkImageUrls] = useState<string[][]>([])
 
   const currentIndex = STEPS.indexOf(step)
@@ -253,7 +254,7 @@ export default function ReportForm() {
   async function handleExport() {
     if (!report) return
     setLoading(true)
-    setError('')
+    setExportError('')
     try {
       const blob = await exportDocx(
         {
@@ -272,7 +273,7 @@ export default function ReportForm() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      setError(e instanceof Error ? e.message : '匯出失敗')
+      setExportError(e instanceof Error ? e.message : '匯出失敗')
     } finally {
       setLoading(false)
     }
@@ -330,6 +331,8 @@ export default function ReportForm() {
           report={report}
           workImageUrls={workImageUrls}
           onExport={handleExport}
+          exportError={exportError}
+          onRegenerate={handleGenerate}
           onBack={() => setStep('content')}
           loading={loading}
         />
