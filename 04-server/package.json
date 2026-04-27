@@ -1,6 +1,10 @@
 {
   "name": "04-server",
-  "module": "index.ts",
+  "module": "src/index.ts",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun src/index.ts"
+  },
   "type": "module",
   "private": true,
   "devDependencies": {
@@ -8,5 +12,11 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.0",
+    "docx": "^9.6.1",
+    "hono": "^4.12.15",
+    "mammoth": "^1.12.0"
   }
 }

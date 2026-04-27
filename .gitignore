@@ -17,6 +17,9 @@ id_ed25519
 # 個人筆記（含帳密）
 01-dev/
 
+# 範例文件（本地參考用）
+example/
+
 # Build 產物
 node_modules/
 dist/
