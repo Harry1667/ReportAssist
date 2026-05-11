@@ -39,3 +39,4 @@ out/
 # bun
 bun.lockb
 *.lock
+.gstack/

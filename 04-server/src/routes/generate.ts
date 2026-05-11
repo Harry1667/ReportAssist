@@ -1,8 +1,59 @@
 import { Hono } from 'hono'
 import { generateReport } from '../services/claude'
 import type { FigureData } from '../services/claude'
+import type { AppEnv } from '../types'
+import db from '../db'
 
-export const generateRoute = new Hono()
+export const generateRoute = new Hono<AppEnv>()
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 3.5)
+}
+
+function getWeekStart(): number {
+  // Monday 00:00 Taiwan time (UTC+8) = Sunday 16:00 UTC
+  const now = new Date()
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000
+  const taiwan = new Date(utc + 8 * 3600000)
+  const day = taiwan.getDay() // 0=Sun, 1=Mon, ...
+  const daysSinceMonday = day === 0 ? 6 : day - 1
+  taiwan.setHours(0, 0, 0, 0)
+  taiwan.setDate(taiwan.getDate() - daysSinceMonday)
+  return Math.floor((taiwan.getTime() - 8 * 3600000) / 1000) // back to UTC unix
+}
+
+function buildInputLog(input: Awaited<ReturnType<typeof buildInput>>): string {
+  const { studentInfo, experimentNumber, experimentTitle, figureData, questionList, discussionAnswers } = input
+  return JSON.stringify({ studentInfo, experimentNumber, experimentTitle, figureData, questionList, discussionAnswers })
+}
+
+function logUsage(
+  userId: number,
+  experimentNumber: string,
+  experimentTitle: string,
+  inputTokens: number,
+  outputTokens: number,
+  inputJson: string,
+  report: object,
+) {
+  try {
+    db.prepare(`
+      INSERT INTO usage_logs (user_id, experiment_number, experiment_title, input_tokens, output_tokens, input_json, report_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(userId, experimentNumber, experimentTitle, inputTokens, outputTokens, inputJson, JSON.stringify(report))
+  } catch (e) {
+    console.error('[generate] log error:', e)
+  }
+}
+
+function checkWeeklyLimit(userId: number): { ok: boolean; used: number; limit: number } {
+  const user = db.prepare('SELECT weekly_limit FROM users WHERE id = ?').get(userId) as { weekly_limit: number } | null
+  const limit = user?.weekly_limit ?? -1
+  if (limit === -1) return { ok: true, used: 0, limit }
+  const weekStart = getWeekStart()
+  const row = db.prepare('SELECT COUNT(*) as cnt FROM usage_logs WHERE user_id = ? AND created_at >= ?').get(userId, weekStart) as { cnt: number }
+  return { ok: row.cnt < limit, used: row.cnt, limit }
+}
 
 async function fileToBase64(file: File): Promise<{ base64: string; mediaType: string }> {
   const buf = await file.arrayBuffer()
@@ -104,10 +155,20 @@ async function buildInput(body: Record<string, BodyValue>) {
 
 generateRoute.post('/', async (c) => {
   const body = await c.req.parseBody({ all: true })
+  const userId = c.get('userId')
+
+  if (userId) {
+    const { ok, used, limit } = checkWeeklyLimit(userId)
+    if (!ok) return c.json({ ok: false, error: `本週使用次數已達上限（${used}/${limit}）` }, 429)
+  }
 
   try {
     const input = await buildInput(body as Record<string, BodyValue>)
+    const inputJson = buildInputLog(input)
+    const inputTokens = estimateTokens(inputJson)
     const report = await generateReport(input)
+    const outputTokens = estimateTokens(JSON.stringify(report))
+    if (userId) logUsage(userId, input.experimentNumber, input.experimentTitle, inputTokens, outputTokens, inputJson, report)
     return c.json({ ok: true, report })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -120,6 +181,13 @@ generateRoute.post('/', async (c) => {
 
 generateRoute.post('/stream', async (c) => {
   const body = await c.req.parseBody({ all: true })
+  const userId = c.get('userId')
+
+  if (userId) {
+    const { ok, used, limit } = checkWeeklyLimit(userId)
+    if (!ok) return c.json({ ok: false, error: `本週使用次數已達上限（${used}/${limit}）` }, 429)
+  }
+
   let input: Awaited<ReturnType<typeof buildInput>>
 
   try {
@@ -145,14 +213,21 @@ generateRoute.post('/stream', async (c) => {
   ;(async () => {
     const keepalive = setInterval(() => {
       try { ctrl.enqueue(enc.encode(': keepalive\n\n')) } catch { clearInterval(keepalive) }
-    }, 15_000)
+    }, 5_000)
 
     try {
       send('status', { msg: '呼叫 AI 服務中...' })
 
-      const report = await generateReport(input, (chunk) => {
-        send('chunk', { text: chunk })
-      })
+      // Proxy-cli streaming endpoint returns empty immediately; use non-streaming to avoid
+      // SSE connection drops. Keepalive above keeps the connection alive while waiting.
+      const report = await generateReport(input)
+
+      if (userId) {
+        const inputJson = buildInputLog(input)
+        const inputTokens = estimateTokens(inputJson)
+        const outputTokens = estimateTokens(JSON.stringify(report))
+        logUsage(userId, input.experimentNumber, input.experimentTitle, inputTokens, outputTokens, inputJson, report)
+      }
 
       send('done', { report })
     } catch (e) {

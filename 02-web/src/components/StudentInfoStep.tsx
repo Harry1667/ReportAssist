@@ -80,11 +80,11 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
       <div className="field-row">
         <div className="field">
           <label>姓名 1 *</label>
-          <AutoInput value={form.studentInfo.name1} onValue={(v) => set('name1', v)} placeholder="王小明" />
+          <AutoInput value={form.studentInfo.name1} onValue={(v) => set('name1', v)} placeholder="例：王小明" />
         </div>
         <div className="field">
           <label>學號 1 *</label>
-          <AutoInput value={form.studentInfo.studentId1} onValue={(v) => set('studentId1', v)} placeholder="D0000001" />
+          <AutoInput value={form.studentInfo.studentId1} onValue={(v) => set('studentId1', v)} placeholder="例：D1234567" />
         </div>
       </div>
 
@@ -116,7 +116,7 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
           <input
             value={form.studentInfo.experimentDate}
             onChange={(e) => set('experimentDate', e.target.value)}
-            placeholder="115/04/02"
+            placeholder="例：115/04/02"
             className={expDateErr ? 'input-error' : ''}
           />
           {expDateErr && <span className="field-error">{expDateErr}</span>}
@@ -126,7 +126,7 @@ export default function StudentInfoStep({ form, onChange, onNext }: Props) {
           <input
             value={form.studentInfo.submitDate}
             onChange={(e) => set('submitDate', e.target.value)}
-            placeholder="115/04/08"
+            placeholder="例：115/04/08"
             className={subDateErr ? 'input-error' : ''}
           />
           {subDateErr && <span className="field-error">{subDateErr}</span>}

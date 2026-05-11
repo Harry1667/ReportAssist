@@ -28,6 +28,18 @@ exportRoute.post('/', async (c) => {
     }
     const workCount = Number(body.workCount || 0)
 
+    // Parse lab record scan images
+    const rawLabScans = body['labRecordImages']
+    const labScanFiles: (string | File)[] = Array.isArray(rawLabScans)
+      ? (rawLabScans as (string | File)[])
+      : rawLabScans ? [rawLabScans as string | File] : []
+    const labRecordImages: Array<{ buffer: Buffer; mime: string }> = []
+    for (const f of labScanFiles) {
+      if (f instanceof File) {
+        labRecordImages.push({ buffer: Buffer.from(await f.arrayBuffer()), mime: f.type || 'image/jpeg' })
+      }
+    }
+
     // Build workImageMap[workIndex][imageIndex] = { buffer, mime }
     const workImageMap: Array<Array<{ buffer: Buffer; mime: string }>> = []
     for (let i = 0; i < workCount; i++) {
@@ -46,7 +58,7 @@ exportRoute.post('/', async (c) => {
       workImageMap.push(images)
     }
 
-    const buffer = await buildDocx({ studentInfo, experimentNumber, experimentTitle }, report, workImageMap)
+    const buffer = await buildDocx({ studentInfo, experimentNumber, experimentTitle }, report, workImageMap, labRecordImages)
     const filename = [experimentNumber, experimentTitle].filter(Boolean).join(' ')
 
     return new Response(buffer, {

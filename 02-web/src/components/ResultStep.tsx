@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import type { GeneratedReport, ContentBlock } from '../api/client'
 
-const HISTORY_KEY = 'ra_history'
+const historyKey = (uid: number) => `ra_history_${uid}`
 
 export interface HistoryEntry {
   id: string
@@ -13,15 +13,15 @@ export interface HistoryEntry {
   report: GeneratedReport
 }
 
-function loadHistory(): HistoryEntry[] {
+function loadHistory(uid: number): HistoryEntry[] {
   try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]')
+    return JSON.parse(localStorage.getItem(historyKey(uid)) ?? '[]')
   } catch { return [] }
 }
 
-function deleteHistory(id: string) {
-  const entries = loadHistory().filter(e => e.id !== id)
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(entries))
+function deleteHistory(uid: number, id: string) {
+  const entries = loadHistory(uid).filter(e => e.id !== id)
+  localStorage.setItem(historyKey(uid), JSON.stringify(entries))
 }
 
 function FormulaRender({ latex }: { latex: string }) {
@@ -96,16 +96,19 @@ interface Props {
   onRegenerate: () => void
   onBack: () => void
   loading: boolean
+  userId: number
 }
 
-export default function ResultStep({ report, workImageUrls, onExport, exportError, onRegenerate, onBack, loading }: Props) {
+export default function ResultStep({ report, workImageUrls, onExport, exportError, onRegenerate, onBack, loading, userId }: Props) {
   const [showHistory, setShowHistory] = useState(false)
-  const [history, setHistory] = useState<HistoryEntry[]>(loadHistory)
+  const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory(userId))
   const [previewEntry, setPreviewEntry] = useState<HistoryEntry | null>(null)
 
+  useEffect(() => { setHistory(loadHistory(userId)) }, [report, userId])
+
   function handleDelete(id: string) {
-    deleteHistory(id)
-    setHistory(loadHistory())
+    deleteHistory(userId, id)
+    setHistory(loadHistory(userId))
     if (previewEntry?.id === id) setPreviewEntry(null)
   }
 

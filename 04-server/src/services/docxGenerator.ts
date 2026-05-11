@@ -31,6 +31,10 @@ const PAGE_MARGIN = { top: 720, right: 720, bottom: 720, left: 720, header: 851,
 const IMG_WIDTH  = 440
 const IMG_HEIGHT = 320
 
+// Lab record scan — full page width, portrait A4 proportions
+const SCAN_WIDTH  = 480
+const SCAN_HEIGHT = 680
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const CN_NUMS = ['一','二','三','四','五','六','七','八','九','十','十一','十二']
 function toCnNum(n: number): string { return CN_NUMS[n - 1] ?? String(n) }
@@ -214,7 +218,8 @@ type StudentInfo = ExperimentInput['studentInfo']
 export async function buildDocx(
   info: { studentInfo: StudentInfo; experimentNumber: string; experimentTitle: string },
   report: { dataAnalysis: ContentBlock[]; experimentalErrors: ContentBlock[]; problemDiscussion: ContentBlock[] },
-  workImageMap: WorkImages[]
+  workImageMap: WorkImages[],
+  labRecordImages: Array<{ buffer: Buffer; mime: string }> = []
 ): Promise<Buffer> {
   const { studentInfo, experimentNumber, experimentTitle } = info
   const names = [studentInfo.name1, studentInfo.name2].filter(Boolean).join(' ')
@@ -244,10 +249,19 @@ export async function buildDocx(
         infoLinePara('繳交日期', studentInfo.submitDate),
         infoLinePara('指導老師', studentInfo.instructor),
 
-        // ── Content (new page) ────────────────────────────────────────────
-        // AI generates ALL section headings within each block array
+        // ── Lab record scans (new page, before content) ──────────────────
         new Paragraph({ children: [], pageBreakBefore: true }),
 
+        ...labRecordImages.flatMap(({ buffer, mime }) => [
+          new Paragraph({
+            children: [new ImageRun({ data: buffer, type: mimeToType(mime), transformation: { width: SCAN_WIDTH, height: SCAN_HEIGHT } })],
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 0, after: 120 },
+          }),
+        ]),
+
+        // ── Content ───────────────────────────────────────────────────────
+        // AI generates ALL section headings within each block array
         ...renderBlocks(report.dataAnalysis, workImageMap),
 
         ...renderBlocks(report.experimentalErrors, workImageMap),

@@ -1,4 +1,13 @@
-const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:3001'
+const BASE = import.meta.env.VITE_API_BASE ?? ''
+
+export function getToken(): string | null {
+  return localStorage.getItem('ra_token')
+}
+
+function authHeader(): Record<string, string> {
+  const t = getToken()
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
 
 export interface StudentInfo {
   name1: string; name2: string
@@ -28,7 +37,7 @@ export type StreamEvent =
 // ── Generate report (regular POST) ──────────────────────────────────────────
 
 export async function generateReport(formData: FormData): Promise<GeneratedReport> {
-  const res = await fetch(`${BASE}/api/generate`, { method: 'POST', body: formData })
+  const res = await fetch(`${BASE}/api/generate`, { method: 'POST', headers: authHeader(), body: formData })
   const data = await res.json() as { ok: boolean; report?: GeneratedReport; error?: string }
   if (!res.ok || !data.ok) throw new Error(data.error ?? `生成失敗: ${res.status}`)
   return data.report!
@@ -41,7 +50,7 @@ export async function generateReportStream(
   onStatus: (msg: string) => void,
   onChunk: (chars: number) => void,
 ): Promise<GeneratedReport> {
-  const res = await fetch(`${BASE}/api/generate/stream`, { method: 'POST', body: formData })
+  const res = await fetch(`${BASE}/api/generate/stream`, { method: 'POST', headers: authHeader(), body: formData })
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
 
   const reader = res.body.getReader()
@@ -87,6 +96,7 @@ export interface ExportInput {
   studentInfo: StudentInfo
   experimentNumber: string
   experimentTitle: string
+  labRecordImages: File[]
   works: Array<{ images: File[] }>
 }
 
@@ -96,12 +106,13 @@ export async function exportDocx(input: ExportInput, report: GeneratedReport): P
   fd.append('experimentTitle', input.experimentTitle)
   Object.entries(input.studentInfo).forEach(([k, v]) => fd.append(k, v))
   fd.append('report', JSON.stringify(report))
+  input.labRecordImages.forEach((img) => fd.append('labRecordImages', img))
   fd.append('workCount', String(input.works.length))
   input.works.forEach((work, i) => {
     work.images.forEach((img) => fd.append(`work_${i}_images`, img))
   })
 
-  const res = await fetch(`${BASE}/api/export`, { method: 'POST', body: fd })
+  const res = await fetch(`${BASE}/api/export`, { method: 'POST', headers: authHeader(), body: fd })
   if (!res.ok) {
     const data = await res.json().catch(() => null) as { error?: string } | null
     throw new Error(data?.error ?? `匯出失敗: ${res.status}`)
