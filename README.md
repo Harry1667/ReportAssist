@@ -29,3 +29,37 @@ cd 02-web
 npm install
 npm run dev
 ```
+
+---
+
+## English
+
+An AI lab-report generator built for the Applied Electronics labs at Feng Chia University's Photonics department. Upload your lab notes, circuit photos, and calculations — get back a Word document ready to submit.
+
+### Workflow
+1. Upload the instructor's template `.docx` (first time, or when the template changes)
+2. After each lab, upload:
+   - Lab notes (photo)
+   - Circuit diagram (photo)
+   - Formulas and calculation steps (text or photo)
+   - Discussion-question answers (text)
+3. AI generates: data analysis + error analysis (3+ error sources) + discussion
+4. Outputs a complete **Word file** ready to hand in
+
+### Output formatting rules
+- Chinese font: 標楷體; English: Times New Roman; body text size 10
+- Images centered with caption below; tables centered with caption above
+- Formulas inserted via the equation editor, numbered on the left, size 12
+- Includes a cover page (department, name, student ID, group, lab / submission date, instructor)
+
+### Tech stack
+- React 19 + TypeScript + Vite (frontend in `02-web/`)
+- Node.js server (backend in `04-server/`)
+- KaTeX (formula preview)
+
+### Quick start
+```bash
+cd 02-web
+npm install
+npm run dev
+```
